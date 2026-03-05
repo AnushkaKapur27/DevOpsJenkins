@@ -6,7 +6,7 @@ pipeline {
         // Change these to match your Docker Hub repository details
         DOCKER_IMAGE = 'devops-frontend'
         DOCKER_CREDS_ID = 'AnushkaKapurbcs149' // ID of credentials in Jenkins
-        DOCKER_HUB_USER = 'Anushka@27' // Replace with your Docker Hub username
+        DOCKER_HUB_USER = 'anushkakapur2023bcs0149' // Replace with your Docker Hub username
         TAG = "${env.BUILD_NUMBER}"
     }
 
