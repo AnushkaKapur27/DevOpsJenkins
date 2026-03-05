@@ -1,61 +1,81 @@
 pipeline {
     agent any
-
+    
+    // Environment variables
     environment {
-        DOCKERHUB_USER = "anushkakapur2023bcs0149"
-        IMAGE_NAME = "frontend"
-        FULL_IMAGE_NAME = "${DOCKERHUB_USER}/${IMAGE_NAME}:latest"
-        CONTAINER_NAME = "anushkabcs149-container"
+        // Change these to match your Docker Hub repository details
+        DOCKER_IMAGE = 'devops-frontend'
+        DOCKER_CREDS_ID = 'dockerhub-credentials' // ID of credentials in Jenkins
+        DOCKER_HUB_USER = 'johnpm12' // Replace with your Docker Hub username
+        TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
-
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
+                // Checkout the SCM automatically
                 checkout scm
             }
         }
+        
+       
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $FULL_IMAGE_NAME .'
-            }
-        }
-
-        stage('Login to DockerHub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+                script {
+                    echo "Building Docker Image: ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}..."
+                    sh "docker build -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG} -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest ."
                 }
             }
         }
 
-        stage('Push Image to DockerHub') {
+        stage('Test Docker Image') {
             steps {
-                sh 'docker push $FULL_IMAGE_NAME'
+                script {
+                    echo "Testing if the container runs..."
+                    // Start the container, wait a moment, and ensure it is up
+                    sh """
+                        docker run -d --name temp-test-${TAG} -p 8085:80 ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}
+                       
+                    """
+                }
             }
         }
+    stage('Push Docker Image') {
+    steps {
+        script {
+            echo "Pushing Docker Image to Docker Hub..."
 
-        stage('Stop Old Container') {
-            steps {
-                sh 'docker stop $CONTAINER_NAME || true'
-                sh 'docker rm $CONTAINER_NAME || true'
+            withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                sh """
+                echo \$DOCKERHUB_PASS | docker login -u ${DOCKER_HUB_USER} --password-stdin
+                docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}
+                docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest
+                docker logout
+                """
             }
-        }
-
-        stage('Run Container') {
-            steps {
-                sh 'docker run -d -p 8081:80 --name $CONTAINER_NAME $FULL_IMAGE_NAME'
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "Image pushed to DockerHub and container deployed!"
-        }
-        failure {
-            echo "Pipeline failed!"
         }
     }
 }
+        
+    }
+
+    post {
+        always {
+            echo "Pipeline finished."
+            // Clean up workspace
+            cleanWs()
+            // Clean up local images
+            sh "docker rmi ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG} || true"
+            sh "docker rmi ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest || true"
+        }
+        success {
+            echo "Build and Push was successful!"
+        }
+        failure {
+            echo "Build or Push failed."
+        }
+    }
+}
+
+
