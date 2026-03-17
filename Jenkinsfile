@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = '2023bcs0149_anushka'
         DOCKER_HUB_USER = 'anushkakapur2023bcs0149'
-        DOCKER_CREDS_ID = 'Jenkins_Dockerhub_bcs149'   // NEW credential (Docker Hub)
+        DOCKER_CREDS_ID = 'Jenkins_DockerHub_bcs149'   // NEW credential (Docker Hub)
         TAG = "${env.BUILD_NUMBER}"
     }
 
